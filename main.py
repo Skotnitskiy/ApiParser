@@ -1,8 +1,6 @@
 import argparse
 import os
 import logging.config
-from datetime import datetime
-
 import requests
 import sys
 import pickle
