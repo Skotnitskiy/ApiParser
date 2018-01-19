@@ -1,6 +1,8 @@
 import argparse
 import os
 import logging.config
+
+import psycopg2
 import requests
 import sys
 import pickle
@@ -10,6 +12,15 @@ from pprint import pprint
 
 
 import config as conf
+
+conn = psycopg2.connect(database=conf.db_name, user=conf.db_user, host=conf.db_host)
+cursor = conn.cursor()
+
+
+def init_database():
+    for categorie in conf.categories_list:
+        cursor.execute(conf.db_init.format(categorie))
+    conn.commit()
 
 
 class Parser(object):
@@ -30,6 +41,7 @@ class Parser(object):
                             choices=conf.categories_list)
         self.args = self.argpars.parse_args()
         self.init_reports()
+        init_database()
 
     def get_records_id(self):
         ids_records = {}

@@ -42,3 +42,7 @@ db_init = 'CREATE TABLE IF NOT EXISTS {}(\
    article_type  VARCHAR(100),\
    url           TEXT\
 );'
+
+db_host = 'localhost'
+db_name = 'api_parser'
+db_user = 'serg'
