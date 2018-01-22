@@ -48,10 +48,10 @@ class Parser(object):
         get_ids_query = SQL("SELECT id FROM {}").format(Identifier(table_name))
         cursor.execute(get_ids_query)
         ids = cursor.fetchall()
-        ids_string = []
+        ids_int = []
         for id in ids:
-            ids_string += [int(id[0])]
-        return ids_string
+            ids_int += [int(id[0])]
+        return ids_int
 
     def __init__(self):
         logging.config.dictConfig(conf.dictLogConfig)
