@@ -5,11 +5,11 @@ import logging.config
 import psycopg2
 import requests
 import sys
-import pickle
 from pandas import *
 from datetime import datetime
 from pprint import pprint
 
+from psycopg2.sql import SQL, Identifier
 
 import config as conf
 
@@ -30,6 +30,28 @@ class Parser(object):
         for categorie in conf.categories_list:
             if not os.path.exists('front/' + categorie + '.html'):
                 DataFrame().to_html('front/' + categorie + '.html', index=False)
+
+    @staticmethod
+    def write_record(table, record, old_ids):
+        id = record.get('id')
+        if id not in old_ids:
+            cursor.execute(SQL("INSERT INTO {}(id) VALUES (%s)").format(Identifier(table)), (id, ))
+            conn.commit()
+            print("===================Inserted new record!===================")
+        for column, value in record.items():
+            cursor.execute(SQL("UPDATE {} SET {} = %s WHERE id = %s;").
+                           format(Identifier(table), Identifier(column)), (value, str(id)))
+            conn.commit()
+
+    @staticmethod
+    def get_old_ids(table_name):
+        get_ids_query = SQL("SELECT id FROM {}").format(Identifier(table_name))
+        cursor.execute(get_ids_query)
+        ids = cursor.fetchall()
+        ids_string = []
+        for id in ids:
+            ids_string += [int(id[0])]
+        return ids_string
 
     def __init__(self):
         logging.config.dictConfig(conf.dictLogConfig)
@@ -55,52 +77,28 @@ class Parser(object):
                 self.logger.error(e)
                 print(e)
                 sys.exit(1)
-            print(len(ids_records), "ids received")
-        all_ids = []
-        for vals in ids_records.values():
-            all_ids += vals
-        if not os.path.exists('ids.pic'):
-            with open("ids.pic", "wb") as f:
-                pickle.dump(all_ids, f)
-            self.rep_empty = True
+            print('categorie', categorie, "ids received")
         return ids_records
 
     def get_records(self):
         ids_records = self.get_records_id()
         self.logger.info("report generation started...")
-        all_records = []
-        with open('ids.pic', 'rb') as f:
-            pickle_ids = pickle.load(f)
         record_line = {}
         for key, val in ids_records.items():
+            old_ids = self.get_old_ids(key)
             for id_rec in val:
-                if id_rec not in pickle_ids or self.rep_empty:
-                    try:
-                        record_line = requests.get(conf.item_url.format(id_rec)).json()
-                        if record_line is not None:
-                            record_line.update({'temp_type': key})
-                    except requests.exceptions.RequestException as e:
-                        self.logger.error(e)
-                        print(e)
-                    if record_line is not None:
-                        if record_line.get("score") >= conf.score:
-                            date = datetime.date(datetime.fromtimestamp((record_line["time"])))
-                            if date >= conf.from_date:
-                                record_line["time"] = datetime.fromtimestamp((record_line["time"])).strftime(
-                                    "%Y-%m-%d-%H:%M:%S")
-                                all_records.append(record_line)
-                                self.logger.info("record {} added to result list".format(id_rec))
-                                pprint(record_line)
-        all_ids = []
-        for vals in ids_records.values():
-            all_ids += vals
-        with open('ids.pic', 'wb') as f:
-            for id in all_ids:
-                if id not in pickle_ids:
-                    pickle_ids.append(id)
-                    print('id', id, 'added')
-            pickle.dump(pickle_ids, f)
-        return all_records
+                try:
+                    record_line = requests.get(conf.item_url.format(id_rec)).json()
+                except requests.exceptions.RequestException as e:
+                    self.logger.error(e)
+                    print(e)
+                if record_line is not None:
+                    if record_line.get("score") >= conf.score:
+                        date = datetime.date(datetime.fromtimestamp((record_line.get('time'))))
+                        if date >= conf.from_date:
+                            self.write_record(key, record_line, old_ids)
+                            self.logger.info("record {} added to result list".format(id_rec))
+                            pprint(record_line)
 
 
 def prepare_report(*args):
@@ -166,4 +164,4 @@ def json_to_html(all_records):
 
 parser = Parser()
 records = parser.get_records()
-json_to_html(records)
+# json_to_html(records)

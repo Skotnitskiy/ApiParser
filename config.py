@@ -31,15 +31,15 @@ dictLogConfig = {
     }
 }
 db_init = 'CREATE TABLE IF NOT EXISTS {}(\
-   author        VARCHAR(100),\
+   by            VARCHAR(100),\
    descendants 	 VARCHAR(15),\
-   id_record     VARCHAR(20) UNIQUE,\
+   id            TEXT UNIQUE,\
    kids          TEXT,\
    score         VARCHAR(20),\
-   article_text  TEXT,\
-   article_time  TIMESTAMP,\
+   text          TEXT,\
+   time          TEXT,\
    title         VARCHAR(300),\
-   article_type  VARCHAR(100),\
+   type          VARCHAR(100),\
    url           TEXT\
 );'
 
